@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+.DS_Store
+npm-debug.log*
+*.local
+data/newsletter-subscribers.json
+data/newsletters.json

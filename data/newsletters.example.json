@@ -1,0 +1,10 @@
+[
+  {
+    "id": "newsletter-example",
+    "subject": "Fall Transmission / 001",
+    "text": "New Lost Signal drop incoming.",
+    "html": "<p>New Lost Signal drop incoming.</p>",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "status": "example"
+  }
+]

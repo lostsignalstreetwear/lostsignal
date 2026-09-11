@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090909">
+  <title>LOSTSIGNAL / frequency for the misplaced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="intro" id="intro" aria-label="Lostsignal loading">
+    <div class="noise"></div>
+    <div class="intro__meta"><span>LS-001</span><span>TRANSMISSION / 01</span></div>
+    <img class="full-logo full-logo--intro" src="logo/logo.jpeg" alt="LOST SIGNAL">
+    <div class="intro__signal"><span class="signal-line"></span><span class="signal-line"></span><span class="signal-line"></span></div>
+    <p class="intro__label">ESTABLISHING CONNECTION</p>
+    <h1 class="intro__title" data-text="LOSTSIGNAL">LOSTSIGNAL</h1>
+    <div class="intro__progress"><span></span></div>
+    <button class="skip" id="skipIntro" type="button">ENTER STORE <span>↵</span></button>
+  </div>
+
+  <main class="site" id="site">
+    <nav class="nav">
+      <a class="header-logo" href="#top" aria-label="Lostsignal home"><img src="logo/logo.jpeg" alt="LOST SIGNAL"></a>
+      <div class="nav__links"><a href="#top" data-panel="home">HOME</a><a href="#collection" data-panel="shop">SHOP</a><a href="#manifesto" data-panel="about">ABOUT</a><a href="#contact" data-panel="contact">CONTACT</a><a href="#collection" data-panel="new">NEW APPAREL</a><a href="#policy" data-panel="policy">POLICY</a><a href="#newsletter" data-panel="newsletter">NEWSLETTER</a></div>
+      <button class="cart-trigger" id="cartTrigger" type="button" aria-label="Open shopping bag">CART <span id="cartCount">0</span></button>
+    </nav>
+
+    <section class="hero" id="top">
+      <div class="hero__copy">
+        <p class="eyebrow">BROADCASTING FROM SOMEWHERE ELSE <span>●</span></p>
+        <h2>Wear the<br><em>static.</em></h2>
+        <p class="hero__text">Unlicensed uniforms for people who never found the right frequency.</p>
+        <a class="text-link" href="#collection">VIEW TRANSMISSION <span>↘</span></a>
+      </div>
+      <div class="hero__image-wrap">
+        <div class="hero__index">01 / 03</div>
+        <div class="storm-scene" role="img" aria-label="Glitchy storm clouds with lightning">
+          <img src="https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=1600&q=95" alt="Storm clouds" class="storm-clouds">
+          <div class="storm-vignette"></div><div class="storm-glitch storm-glitch--one"></div><div class="storm-glitch storm-glitch--two"></div>
+          <svg class="storm-bolt storm-bolt--one" viewBox="0 0 180 500" aria-hidden="true"><path d="M112 0 38 185h57L28 353l58-103H35z"/></svg>
+          <svg class="storm-bolt storm-bolt--two" viewBox="0 0 180 500" aria-hidden="true"><path d="M112 0 38 185h57L28 353l58-103H35z"/></svg>
+          <span class="storm-signal">STORM SIGNAL / 001</span>
+        </div>
+        <div class="hero__stamp">LS<br>FM</div>
+      </div>
+      <div class="hero__ticker"><span>NEW FREQUENCY DETECTED</span><span>SS26 / DROP 01</span><span>NEW FREQUENCY DETECTED</span><span>SS26 / DROP 01</span></div>
+    </section>
+
+    <section class="manifesto" id="manifesto">
+      <p class="eyebrow">THE LOSTSIGNAL CONDITION</p>
+      <p class="manifesto__statement">For the <span>unreachable.</span><br>For the almost there.<br>For anyone who has ever<br><span>felt out of range.</span></p>
+      <div class="manifesto__aside"><span>FIELD NOTE / 001</span><p>Lostsignal is a study in dissonance. Garments made in the quiet spaces between utility and instinct.</p></div>
+    </section>
+
+    <section class="collection" id="collection">
+      <div class="coming-soon-head"><div><p class="eyebrow">SIGNAL INCOMING</p><h3>COMING SOON</h3></div><span class="section-head__count">03 MOCKUPS / UNRELEASED</span></div>
+      <div class="coming-soon-grid">
+        <article class="coming-card"><div class="coming-image"><img src="images/mockup-1.PNG" alt="Lostsignal apparel mockup one" loading="lazy"><span>COMING SOON</span></div><p>TRANSMISSION 05</p></article>
+        <article class="coming-card"><div class="coming-image"><img src="images/mockup-2.PNG" alt="Lostsignal apparel mockup two" loading="lazy"><span>COMING SOON</span></div><p>TRANSMISSION 06</p></article>
+        <article class="coming-card"><div class="coming-image"><img src="images/mockup-3.PNG" alt="Lostsignal apparel mockup three" loading="lazy"><span>COMING SOON</span></div><p>TRANSMISSION 07</p></article>
+      </div>
+      <article class="test-product"><div><p class="eyebrow">INTERNAL TEST ITEM</p><h3>TEST SIGNAL</h3><p>Temporary checkout item for testing your order flow.</p></div><div class="test-product__action"><strong id="testPrice">$--</strong><button class="checkout-button" id="addTestItem" type="button">ADD TEST ITEM <span>+</span></button></div></article>
+    </section>
+
+    <footer class="footer" id="contact"><a class="header-logo" href="#top"><img src="logo/logo.jpeg" alt="LOST SIGNAL"></a><p>THE FREQUENCY IS YOURS.<br><a href="mailto:Lostsignal320@gmail.com">Lostsignal320@gmail.com</a></p><span>© 2026 LOSTSIGNAL</span></footer>
+  </main>
+
+  <aside class="nav-panel" id="navPanel" aria-hidden="true">
+    <button class="nav-panel__close" id="closeNavPanel" type="button" aria-label="Close navigation panel">×</button>
+    <div class="nav-panel__content" data-panel-content="shop"><p class="eyebrow">THE COLLECTION</p><h2>SHOP<br><em>THE SIGNAL.</em></h2><p>Three unreleased pieces from the next transmission.</p><a class="panel-link" href="#collection">VIEW MOCKUPS <span>↘</span></a></div>
+    <div class="nav-panel__content" data-panel-content="new"><p class="eyebrow">SIGNAL INCOMING</p><h2>NEW<br><em>APPAREL.</em></h2><p>Fresh forms. Same frequency. All three pieces are coming soon.</p><a class="panel-link" href="#collection">VIEW THE DROP <span>↘</span></a></div>
+    <div class="nav-panel__content" data-panel-content="about"><p class="eyebrow">THE LOSTSIGNAL CONDITION</p><h2>ABOUT<br><em>THE OUTCAST.</em></h2><p>Lostsignal makes unlicensed uniforms for people who never found the right frequency.</p><p class="panel-note">Garments made in the quiet spaces between utility and instinct.</p></div>
+    <div class="nav-panel__content" data-panel-content="contact"><p class="eyebrow">OPEN CHANNEL</p><h2>CONTACT<br><em>THE STUDIO.</em></h2><div class="contact-details"><a href="mailto:Lostsignal320@gmail.com">Lostsignal320@gmail.com</a></div><p class="panel-note">Email for new orders and customer inquiries.</p></div>
+    <div class="nav-panel__content" data-panel-content="policy" id="policy"><p class="eyebrow">CUSTOMER CARE</p><h2>RETURN<br><em>POLICY.</em></h2><p>Every piece is hand printed to order, so returns are handled with care.</p><div class="policy-list"><p><strong>RETURN WINDOW</strong><br>Return requests must be submitted within 15 days from the date the order is delivered. Eligible items must be unworn, unwashed, unaltered, free from stains, odors, makeup, pet hair, or other signs of use, in original condition, and with original tags attached when applicable. Returns submitted after the 15-day period may be refused, except where required by applicable law.</p><p><strong>REFUNDS</strong><br>Approved refunds are based on the actual amount paid by the customer. Returned merchandise must be received and inspected before a refund is approved. Lost Signal does not automatically approve every return. Original shipping charges are non-refundable unless the return is due to an error by Lost Signal or a defective or incorrect item. Refunds are issued to the original payment method.</p><p><strong>DISCOUNTED ORDERS</strong><br>Items purchased using a discount code or coupon are still subject to the 15-day return policy unless the specific promotion states otherwise. Refunds for discounted items are based on the actual amount paid after the discount was applied. The coupon or discount value is not refundable as cash. If returning an item causes the remaining items in the order to no longer qualify for the original discount, promotion, or minimum purchase requirement, Lost Signal may recalculate the discount when determining the refund amount. Customers will not receive a refund based on the original full retail price when the item was purchased at a discounted price.</p><p><strong>EXCHANGES</strong><br>Eligible items may be exchanged within the 15-day return period, subject to availability. Customers are responsible for applicable return or exchange shipping costs when the exchange is due to incorrect size selection, change of mind, or ordering the wrong item. Lost Signal will cover appropriate shipping costs when the exchange is required because Lost Signal sent the wrong or defective item.</p><p><strong>DAMAGED / DEFECTIVE / INCORRECT</strong><br>Contact Lost Signal within 15 days of delivery if you receive a damaged item, defective item, wrong item, wrong color, or a significant printing defect. Customers may be required to provide photographs of the issue. Lost Signal will review the issue and determine whether a replacement, exchange, or refund is appropriate.</p><p><strong>SCREEN PRINTING</strong><br>Minor variations in ink texture, print placement, and print appearance may naturally occur with screen printing. Minor variations do not automatically constitute a defect. Significant printing defects will be reviewed by Lost Signal.</p><p><strong>NON-RETURNABLE ITEMS</strong><br>Worn clothing, washed clothing, altered clothing, customer-damaged clothing, clothing with stains, odors, makeup, pet hair, or other signs of use, items returned after the 15-day return period, clearly identified final-sale items, and custom or personalized items are not eligible for return except when defective or incorrectly produced.</p><p><strong>SHIPPING</strong><br>Lost Signal ships exclusively via UPS. Available shipping services and costs may vary depending on customer location, package weight, package dimensions, shipping service selected, carrier availability, and other applicable shipping factors. Shipping costs are generally the responsibility of the customer unless Lost Signal specifically offers free shipping or a shipping promotion. The actual shipping cost will be displayed to the customer during checkout before the order is completed.</p><p><strong>RETURNS / EXCHANGES SHIPPING</strong><br>For returns or exchanges caused by customer preference, incorrect size selection, change of mind, or ordering the wrong item, the customer is responsible for applicable return shipping costs. For defective, damaged, or incorrectly fulfilled orders caused by Lost Signal, Lost Signal will cover appropriate return or replacement shipping costs.</p><p><strong>SHIPPING TIMES</strong><br>Processing time is the time needed to prepare and package an order before shipment. Shipping or transit time is the time the package is in transit after it has been handed to the carrier. USPS and UPS delivery times can vary because of weather, holidays, carrier delays, incorrect addresses, and other circumstances outside Lost Signal's control. Lost Signal does not guarantee delivery dates unless the selected shipping service provides a guaranteed delivery date.</p><p><strong>EXCEPTIONS</strong><br>We offer a full refund or replacement for damaged, incorrect, or defective orders. Contact us within 15 days of delivery with photos and a description of the issue. Each claim is reviewed individually to determine the appropriate resolution.</p></div><a class="panel-link" href="mailto:Lostsignal320@gmail.com?subject=Return%20request">START A RETURN <span>↗</span></a></div>
+    <div class="nav-panel__content newsletter-panel-content" data-panel-content="newsletter" id="newsletter"><p class="eyebrow">FALL TRANSMISSION / 001</p><h2>JOIN<br><em>THE SIGNAL.</em></h2><p class="newsletter-panel-offer">15% OFF YOUR FIRST SIGNAL</p><p>Get exclusive coupons, early access, and first notice when new drops go live.</p><form class="newsletter-form" id="newsletterForm" novalidate><div class="newsletter-field"><label for="newsletterEmail">ENTER YOUR EMAIL</label><input id="newsletterEmail" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@lostsignal.com" aria-required="true" required></div><button class="newsletter-submit" type="submit">JOIN THE SIGNAL</button></form><p class="newsletter-feedback" id="newsletterFeedback" aria-live="polite"></p></div>
+  </aside>
+
+  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true">
+    <div class="cart-header"><div><p class="eyebrow">YOUR TRANSMISSION</p><h2>THE BAG <span id="cartDrawerCount">0</span></h2></div><button class="close-button" id="closeCart" type="button" aria-label="Close shopping bag">×</button></div>
+    <div class="cart-items" id="cartItems"><div class="empty-cart"><span>∅</span><p>Nothing intercepted yet.</p><a href="#collection" id="emptyCartLink">SCAN THE DROP</a></div></div>
+    <div class="cart-footer"><div class="subtotal"><span>SUBTOTAL</span><strong id="cartTotal">$0</strong></div><button class="checkout-button" id="checkoutButton" type="button" disabled>CHECK OUT <span>↗</span></button><p class="payment-note">SECURE CHECKOUT / PAYPAL SANDBOX</p></div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="checkout-modal" id="checkoutModal" aria-hidden="true">
+    <div class="checkout-card"><button class="close-button" id="closeCheckout" type="button" aria-label="Close checkout">×</button><div id="checkoutFormView"><p class="eyebrow">ORDER DETAILS / REQUIRED</p><div class="sandbox-badge">SANDBOX TEST MODE</div><h2>YOUR<br><em>transmission.</em></h2><div class="coupon-section"><label for="couponCode">HAVE A DISCOUNT CODE?</label><div class="coupon-entry"><input id="couponCode" name="couponCode" autocomplete="off" placeholder="ENTER CODE"><button id="applyCoupon" type="button">APPLY</button></div><p class="coupon-feedback" id="couponFeedback" aria-live="polite"></p><button class="coupon-remove" id="removeCoupon" type="button" hidden>REMOVE DISCOUNT</button></div><div class="order-summary" id="checkoutSummary" aria-live="polite"></div><form id="customerForm"><label>FULL NAME<input name="name" required autocomplete="name"></label><label>EMAIL<input name="email" type="email" required autocomplete="email"></label><label>SHIPPING ADDRESS<input name="address" required autocomplete="street-address"></label><label>CITY / STATE / ZIP<input name="location" required autocomplete="address-level2"></label><button class="checkout-button" type="submit">CONTINUE TO PAYMENT <span>↗</span></button></form></div><div class="payment-view" id="paymentView" hidden><p class="eyebrow">FINAL TRANSMISSION</p><div class="sandbox-badge">PAYPAL SANDBOX</div><h2>CHOOSE YOUR<br><em>frequency.</em></h2><div class="order-summary" id="paymentSummary" aria-live="polite"></div><div class="pay-options"><div id="paypalContainer"></div></div><p class="checkout-disclaimer">PayPal sandbox checkout is enabled for testing. Only a successful server-side capture marks the order as paid.</p></div><div class="order-status" id="orderStatus" hidden><p class="eyebrow">ORDER RECEIVED</p><div class="sandbox-badge">SANDBOX SUCCESS</div><h2>PRINTING<br><em>YOUR SIGNAL.</em></h2><div class="status-track"><span></span></div><ol><li>ORDER RECEIVED</li><li>PRINTING YOUR CLOTHES</li><li>QUALITY CHECK</li><li>HANDING OFF TO DELIVERY</li></ol><p class="checkout-disclaimer">A notification will be sent to your email once a production window is confirmed.</p></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

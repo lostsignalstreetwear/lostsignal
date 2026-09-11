@@ -1,0 +1,11 @@
+[
+  {
+    "code": "SIGNAL15",
+    "description": "15% off your first signal",
+    "type": "percent",
+    "amount": 15,
+    "active": true,
+    "startsAt": null,
+    "endsAt": null
+  }
+]
