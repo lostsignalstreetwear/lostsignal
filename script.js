@@ -5,6 +5,7 @@ const products = [
   { id: 4, name: 'Low Frequency Tee', price: 58, meta: '04 / BASE LAYER', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=85', tag: 'SIGNAL 04' }
 ];
 const BRAND_EMAIL = 'Lostsignal320@gmail.com';
+const API_BASE_URL = String(window.LOSTSIGNAL_API_BASE_URL || '').replace(/\/+$/, '');
 let PAYPAL_CLIENT_ID = '';
 let PAYPAL_SDK_READY = false;
 let PAYPAL_SDK_PROMISE = null;
@@ -23,6 +24,10 @@ const cart = [];
 let appliedCoupon = null;
 const $ = (id) => document.getElementById(id);
 const navPanel = $('navPanel');
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
 
 function canUseStorage() {
   try {
@@ -63,7 +68,7 @@ async function handleNewsletterSubmit(event) {
   showNewsletterMessage('Sending…');
 
   try {
-    const response = await fetch('/api/newsletter/subscribe', {
+    const response = await fetch(apiUrl('/api/newsletter/subscribe'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -87,7 +92,7 @@ async function handleNewsletterSubmit(event) {
 
 async function getPayPalClientConfig() {
   try {
-    const response = await fetch('/api/paypal/config', { method: 'GET' });
+    const response = await fetch(apiUrl('/api/paypal/config'), { method: 'GET' });
     const data = await response.json();
     if (!response.ok || !data.clientId) {
       throw new Error(data.error || 'PayPal config was not available.');
@@ -157,7 +162,7 @@ async function loadPayPalSdk() {
 
 async function checkCheckoutServer() {
   try {
-    const response = await fetch('/api/health', { method: 'GET' });
+    const response = await fetch(apiUrl('/api/health'), { method: 'GET' });
     if (!response.ok) {
       throw new Error('Checkout server unavailable');
     }
@@ -206,7 +211,7 @@ async function loadShippingQuote() {
   renderCheckoutSummary();
 
   try {
-    const response = await fetch('/api/shipping/rates', {
+    const response = await fetch(apiUrl('/api/shipping/rates'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -403,7 +408,7 @@ async function applyCoupon() {
 
   $('couponFeedback').textContent = 'VALIDATING CODE...';
   try {
-    const response = await fetch('/api/coupons/validate', {
+    const response = await fetch(apiUrl('/api/coupons/validate'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: cart.map((item) => ({ id: item.id, quantity: 1 })), couponCode: code })
     });
@@ -497,7 +502,7 @@ function renderPayPalButton() {
       createOrder: async () => {
         try {
           markStatus('PayPal status: contacting PayPal…');
-          const response = await fetch('/api/paypal/create-order', {
+          const response = await fetch(apiUrl('/api/paypal/create-order'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -540,7 +545,7 @@ function renderPayPalButton() {
             }))
           };
 
-          const captureResponse = await fetch('/api/paypal/capture-order', {
+          const captureResponse = await fetch(apiUrl('/api/paypal/capture-order'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
