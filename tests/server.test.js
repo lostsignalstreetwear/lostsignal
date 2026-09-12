@@ -7,10 +7,15 @@ const {
   calculateOrderAmounts,
   calculateRefundSummary,
   dedupeKeyForOrder,
+  escapeHtml,
   findCoupon,
   getShippingRateConfigStatus,
   selectCheapestEligibleShipment
 } = require('../server');
+
+test('escapeHtml neutralizes user-controlled email content', () => {
+  assert.equal(escapeHtml('<img src=x onerror="alert(1)">'), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+});
 
 test('calculateOrderAmounts applies a percentage coupon from the coupon catalog', () => {
   const result = calculateOrderAmounts([{ id: 1, unitPrice: 100, quantity: 1 }], 'SIGNAL15');

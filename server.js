@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,7 @@ const ORDER_EMAIL_TO = process.env.ORDER_EMAIL_TO || 'Lostsignal320@gmail.com';
 const ORDER_EMAIL_FROM = process.env.ORDER_EMAIL_FROM || 'orders@lostsignal.dev';
 const NEWSLETTER_EMAIL_FROM = process.env.NEWSLETTER_EMAIL_FROM || ORDER_EMAIL_FROM;
 const NEWSLETTER_ADMIN_TOKEN = process.env.NEWSLETTER_ADMIN_TOKEN;
+const DATABASE_URL = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL || '';
 const UPS_SHIPPING_MODE = String(process.env.UPS_SHIPPING_MODE || '').trim().toUpperCase();
 const UPS_TEST_SHIPPING_RATE = Number(process.env.UPS_TEST_SHIPPING_RATE || 10);
 const UPS_CLIENT_ID = process.env.UPS_CLIENT_ID;
@@ -30,6 +32,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const SUBSCRIBERS_FILE = path.join(DATA_DIR, 'newsletter-subscribers.json');
 const COUPONS_FILE = path.join(DATA_DIR, 'coupons.json');
 const NEWSLETTERS_FILE = path.join(DATA_DIR, 'newsletters.json');
+let databasePool = null;
+let databaseReady = null;
 
 const isProductionDeployment = process.env.CONTEXT === 'production' || process.env.NODE_ENV === 'production';
 const isSandbox = PAYPAL_ENVIRONMENT === 'sandbox';
@@ -110,6 +114,66 @@ function writeDataFile(filePath, value) {
   fs.renameSync(temporaryPath, filePath);
 }
 
+function hasDatabase() {
+  return Boolean(DATABASE_URL);
+}
+
+async function getDatabasePool() {
+  if (!hasDatabase()) return null;
+  if (!databasePool) {
+    databasePool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  }
+  if (!databaseReady) {
+    databaseReady = databasePool.query(`
+      CREATE TABLE IF NOT EXISTS lostsignal_collections (
+        collection TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+  await databaseReady;
+  return databasePool;
+}
+
+async function readDataCollection(collection, filePath, fallback) {
+  if (isProductionDeployment && !hasDatabase()) {
+    throw new Error('Persistent database configuration is missing.');
+  }
+
+  const pool = await getDatabasePool();
+  if (!pool) return readDataFile(filePath, fallback);
+
+  const result = await pool.query('SELECT data FROM lostsignal_collections WHERE collection = $1', [collection]);
+  if (result.rows.length) return result.rows[0].data;
+
+  const initialData = readDataFile(filePath, fallback);
+  await pool.query(
+    `INSERT INTO lostsignal_collections (collection, data) VALUES ($1, $2::jsonb) ON CONFLICT (collection) DO NOTHING`,
+    [collection, JSON.stringify(initialData)]
+  );
+  return initialData;
+}
+
+async function writeDataCollection(collection, filePath, value) {
+  if (isProductionDeployment && !hasDatabase()) {
+    throw new Error('Persistent database configuration is missing.');
+  }
+
+  const pool = await getDatabasePool();
+  if (!pool) {
+    writeDataFile(filePath, value);
+    return;
+  }
+
+  await pool.query(
+    `INSERT INTO lostsignal_collections (collection, data, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (collection) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+    [collection, JSON.stringify(value)]
+  );
+}
+
 function requireNewsletterAdmin(req, res, next) {
   if (!NEWSLETTER_ADMIN_TOKEN) {
     return res.status(503).json({ error: 'Newsletter admin is not configured.' });
@@ -154,6 +218,15 @@ function sanitizeText(value, fallback = '') {
   }
 
   return String(value).trim() || fallback;
+}
+
+function escapeHtml(value, fallback = '') {
+  return sanitizeText(value, fallback)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function safeNumber(value, fallback = 0) {
@@ -308,6 +381,18 @@ function findCoupon(code, subtotal, now = new Date(), couponCatalog = readDataFi
 function calculateOrderAmounts(items, couponCode = '') {
   const subtotal = Number(calculateCartTotal(items).toFixed(2));
   const appliedCoupon = findCoupon(couponCode, subtotal);
+  return {
+    subtotal,
+    discount: appliedCoupon.discount,
+    total: Number((subtotal - appliedCoupon.discount).toFixed(2)),
+    coupon: appliedCoupon.coupon
+  };
+}
+
+async function calculateOrderAmountsFromStore(items, couponCode = '') {
+  const subtotal = Number(calculateCartTotal(items).toFixed(2));
+  const couponCatalog = await readDataCollection('coupons', COUPONS_FILE, []);
+  const appliedCoupon = findCoupon(couponCode, subtotal, new Date(), couponCatalog);
   return {
     subtotal,
     discount: appliedCoupon.discount,
@@ -529,10 +614,10 @@ async function sendOrderEmail(orderData) {
     const totalLine = Number((unitPrice * quantity).toFixed(2));
     return `
       <tr>
-        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6;">${sanitizeText(item.name, 'Product')}</td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: center;">${quantity}</td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: right;">$${unitPrice.toFixed(2)}</td>
-        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: right;">$${totalLine.toFixed(2)}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6;">${escapeHtml(item.name, 'Product')}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: center;">${escapeHtml(quantity)}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: right;">$${escapeHtml(unitPrice.toFixed(2))}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #e9e2d6; text-align: right;">$${escapeHtml(totalLine.toFixed(2))}</td>
       </tr>
     `;
   }).join('');
@@ -548,12 +633,12 @@ async function sendOrderEmail(orderData) {
           <h2 style="margin: 0 0 18px; font-size: 30px; letter-spacing: -0.05em;">New Lost Signal Order</h2>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 14px; line-height: 1.6;">
-            <div><strong>Order ID:</strong><br>${sanitizeText(orderData.orderId, 'N/A')}</div>
-            <div><strong>PayPal Status:</strong><br>${sanitizeText(orderData.paymentStatus, 'UNKNOWN')}</div>
-            <div><strong>Customer:</strong><br>${sanitizeText(orderData.customerName, 'Guest')}</div>
-            <div><strong>Email:</strong><br>${sanitizeText(orderData.customerEmail, 'Not provided')}</div>
-            <div style="grid-column: 1 / -1;"><strong>Shipping:</strong><br>${sanitizeText(orderData.shippingAddress, 'Not provided')}</div>
-            <div style="grid-column: 1 / -1;"><strong>Date:</strong><br>${new Date(orderData.date || Date.now()).toLocaleString()}</div>
+            <div><strong>Order ID:</strong><br>${escapeHtml(orderData.orderId, 'N/A')}</div>
+            <div><strong>PayPal Status:</strong><br>${escapeHtml(orderData.paymentStatus, 'UNKNOWN')}</div>
+            <div><strong>Customer:</strong><br>${escapeHtml(orderData.customerName, 'Guest')}</div>
+            <div><strong>Email:</strong><br>${escapeHtml(orderData.customerEmail, 'Not provided')}</div>
+            <div style="grid-column: 1 / -1;"><strong>Shipping:</strong><br>${escapeHtml(orderData.shippingAddress, 'Not provided')}</div>
+            <div style="grid-column: 1 / -1;"><strong>Date:</strong><br>${escapeHtml(new Date(orderData.date || Date.now()).toLocaleString())}</div>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px;">
@@ -569,10 +654,10 @@ async function sendOrderEmail(orderData) {
           </table>
 
           <div style="margin-top: 18px; font-size: 14px; line-height: 1.8; border-top: 1px solid #e9e2d6; padding-top: 14px;">
-            <div><strong>Subtotal:</strong> $${Number(orderData.subtotal || 0).toFixed(2)}</div>
-            <div><strong>Shipping:</strong> $${Number(orderData.shippingCost || 0).toFixed(2)}</div>
-            <div><strong>Tax:</strong> $${Number(orderData.tax || 0).toFixed(2)}</div>
-            <div><strong>Total Paid:</strong> $${Number(orderData.total || 0).toFixed(2)} ${sanitizeText(orderData.currency, 'USD')}</div>
+            <div><strong>Subtotal:</strong> $${escapeHtml(Number(orderData.subtotal || 0).toFixed(2))}</div>
+            <div><strong>Shipping:</strong> $${escapeHtml(Number(orderData.shippingCost || 0).toFixed(2))}</div>
+            <div><strong>Tax:</strong> $${escapeHtml(Number(orderData.tax || 0).toFixed(2))}</div>
+            <div><strong>Total Paid:</strong> $${escapeHtml(Number(orderData.total || 0).toFixed(2))} ${escapeHtml(orderData.currency, 'USD')}</div>
           </div>
         </div>
       </div>
@@ -613,7 +698,7 @@ async function sendNewsletterToSubscribers(newsletter) {
     throw new Error('SMTP credentials are not configured.');
   }
 
-  const subscribers = readDataFile(SUBSCRIBERS_FILE, []).filter((subscriber) => subscriber.active !== false);
+  const subscribers = (await readDataCollection('subscribers', SUBSCRIBERS_FILE, [])).filter((subscriber) => subscriber.active !== false);
   const results = await Promise.allSettled(subscribers.map((subscriber) => transporter.sendMail({
     from: NEWSLETTER_EMAIL_FROM,
     to: subscriber.email,
@@ -651,10 +736,10 @@ app.get('/api/paypal/config', (req, res) => {
   });
 });
 
-app.post('/api/coupons/validate', (req, res) => {
+app.post('/api/coupons/validate', async (req, res) => {
   try {
     const trustedItems = normalizeCartItems(req.body?.items || []);
-    const amounts = calculateOrderAmounts(trustedItems, req.body?.couponCode || '');
+    const amounts = await calculateOrderAmountsFromStore(trustedItems, req.body?.couponCode || '');
     return res.json({
       ok: true,
       subtotal: amounts.subtotal,
@@ -744,7 +829,7 @@ app.post('/api/paypal/create-order', async (req, res) => {
     }
 
     const trustedItems = normalizeCartItems(req.body.items || []);
-    const amounts = calculateOrderAmounts(trustedItems, req.body.couponCode || '');
+    const amounts = await calculateOrderAmountsFromStore(trustedItems, req.body.couponCode || '');
     const shippingQuote = await resolveShippingQuote({
       items: trustedItems,
       destination: req.body.destination || {},
@@ -913,15 +998,15 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Please enter a valid email address.' });
     }
 
-    const subscribers = readDataFile(SUBSCRIBERS_FILE, []);
+    const subscribers = await readDataCollection('subscribers', SUBSCRIBERS_FILE, []);
     const existingSubscriber = subscribers.find((subscriber) => subscriber.email === email);
     if (!existingSubscriber) {
       subscribers.push({ email, subscribedAt: new Date().toISOString(), active: true });
-      writeDataFile(SUBSCRIBERS_FILE, subscribers);
+      await writeDataCollection('subscribers', SUBSCRIBERS_FILE, subscribers);
     } else if (existingSubscriber.active === false) {
       existingSubscriber.active = true;
       existingSubscriber.resubscribedAt = new Date().toISOString();
-      writeDataFile(SUBSCRIBERS_FILE, subscribers);
+      await writeDataCollection('subscribers', SUBSCRIBERS_FILE, subscribers);
     }
 
     if (existingSubscriber?.active !== false && existingSubscriber?.welcomeSentAt) {
@@ -933,7 +1018,7 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
       const savedSubscriber = subscribers.find((subscriber) => subscriber.email === email);
       if (savedSubscriber) {
         savedSubscriber.welcomeSentAt = new Date().toISOString();
-        writeDataFile(SUBSCRIBERS_FILE, subscribers);
+        await writeDataCollection('subscribers', SUBSCRIBERS_FILE, subscribers);
       }
       return res.json({ ok: true, message: 'SIGNAL RECEIVED. You are on the list.' });
     } catch (mailError) {
@@ -949,15 +1034,15 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
   }
 });
 
-app.get('/api/newsletter/subscribers', requireNewsletterAdmin, (req, res) => {
-  res.json({ ok: true, subscribers: readDataFile(SUBSCRIBERS_FILE, []) });
+app.get('/api/newsletter/subscribers', requireNewsletterAdmin, async (req, res) => {
+  res.json({ ok: true, subscribers: await readDataCollection('subscribers', SUBSCRIBERS_FILE, []) });
 });
 
-app.get('/api/newsletter/coupons', requireNewsletterAdmin, (req, res) => {
-  res.json({ ok: true, coupons: readDataFile(COUPONS_FILE, []) });
+app.get('/api/newsletter/coupons', requireNewsletterAdmin, async (req, res) => {
+  res.json({ ok: true, coupons: await readDataCollection('coupons', COUPONS_FILE, []) });
 });
 
-app.post('/api/newsletter/coupons', requireNewsletterAdmin, (req, res) => {
+app.post('/api/newsletter/coupons', requireNewsletterAdmin, async (req, res) => {
   const code = sanitizeText(req.body?.code, '').toUpperCase().replace(/[^A-Z0-9_-]/g, '');
   const description = sanitizeText(req.body?.description, 'Lost Signal offer');
   const amount = safeNumber(req.body?.amount, 0);
@@ -967,24 +1052,24 @@ app.post('/api/newsletter/coupons', requireNewsletterAdmin, (req, res) => {
     return res.status(400).json({ error: 'Coupon code and a valid discount amount are required.' });
   }
 
-  const coupons = readDataFile(COUPONS_FILE, []);
+  const coupons = await readDataCollection('coupons', COUPONS_FILE, []);
   const coupon = { code, description, type, amount, active: req.body?.active !== false, startsAt: req.body?.startsAt || null, endsAt: req.body?.endsAt || null };
   const existingIndex = coupons.findIndex((item) => item.code === code);
   if (existingIndex >= 0) coupons[existingIndex] = coupon;
   else coupons.push(coupon);
-  writeDataFile(COUPONS_FILE, coupons);
+  await writeDataCollection('coupons', COUPONS_FILE, coupons);
   return res.status(existingIndex >= 0 ? 200 : 201).json({ ok: true, coupon });
 });
 
-app.get('/api/newsletter/drafts', requireNewsletterAdmin, (req, res) => {
-  res.json({ ok: true, newsletters: readDataFile(NEWSLETTERS_FILE, []) });
+app.get('/api/newsletter/drafts', requireNewsletterAdmin, async (req, res) => {
+  res.json({ ok: true, newsletters: await readDataCollection('newsletters', NEWSLETTERS_FILE, []) });
 });
 
 app.post('/api/newsletter/publish', requireNewsletterAdmin, async (req, res) => {
   const subject = sanitizeText(req.body?.subject, 'Lost Signal transmission');
   const text = sanitizeText(req.body?.text, 'New Lost Signal transmission incoming.');
   const html = sanitizeText(req.body?.html, `<p>${text}</p>`);
-  const newsletters = readDataFile(NEWSLETTERS_FILE, []);
+  const newsletters = await readDataCollection('newsletters', NEWSLETTERS_FILE, []);
   const newsletter = { id: `newsletter-${Date.now()}`, subject, text, html, createdAt: new Date().toISOString(), status: 'sending' };
 
   try {
@@ -992,13 +1077,13 @@ app.post('/api/newsletter/publish', requireNewsletterAdmin, async (req, res) => 
     newsletter.status = result.failed ? 'partial' : 'sent';
     newsletter.delivery = result;
     newsletters.push(newsletter);
-    writeDataFile(NEWSLETTERS_FILE, newsletters);
+    await writeDataCollection('newsletters', NEWSLETTERS_FILE, newsletters);
     return res.json({ ok: true, newsletter });
   } catch (error) {
     newsletter.status = 'failed';
     newsletter.error = error.message;
     newsletters.push(newsletter);
-    writeDataFile(NEWSLETTERS_FILE, newsletters);
+    await writeDataCollection('newsletters', NEWSLETTERS_FILE, newsletters);
     return res.status(503).json({ ok: false, error: 'Newsletter was not sent. Check SMTP configuration.', newsletter });
   }
 });
@@ -1022,6 +1107,7 @@ module.exports = {
   buildOrderEmailPayload,
   buildUpsShippingRate,
   dedupeKeyForOrder,
+  escapeHtml,
   sendNewsletterSignupEmail,
   sendOrderEmail,
   normalizeCartItems,
