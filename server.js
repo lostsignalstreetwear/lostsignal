@@ -11,7 +11,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || '';
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-const PAYPAL_ENVIRONMENT = (process.env.PAYPAL_ENVIRONMENT || 'sandbox').toLowerCase();
+const PAYPAL_ENVIRONMENT = String(process.env.PAYPAL_ENVIRONMENT || '').trim().toLowerCase();
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_USER = process.env.SMTP_USER;
@@ -20,7 +20,7 @@ const ORDER_EMAIL_TO = process.env.ORDER_EMAIL_TO || 'Lostsignal320@gmail.com';
 const ORDER_EMAIL_FROM = process.env.ORDER_EMAIL_FROM || 'orders@lostsignal.dev';
 const NEWSLETTER_EMAIL_FROM = process.env.NEWSLETTER_EMAIL_FROM || ORDER_EMAIL_FROM;
 const NEWSLETTER_ADMIN_TOKEN = process.env.NEWSLETTER_ADMIN_TOKEN;
-const UPS_SHIPPING_MODE = (process.env.UPS_SHIPPING_MODE || 'TEST').toUpperCase();
+const UPS_SHIPPING_MODE = String(process.env.UPS_SHIPPING_MODE || '').trim().toUpperCase();
 const UPS_TEST_SHIPPING_RATE = Number(process.env.UPS_TEST_SHIPPING_RATE || 10);
 const UPS_CLIENT_ID = process.env.UPS_CLIENT_ID;
 const UPS_CLIENT_SECRET = process.env.UPS_CLIENT_SECRET;
@@ -31,10 +31,39 @@ const SUBSCRIBERS_FILE = path.join(DATA_DIR, 'newsletter-subscribers.json');
 const COUPONS_FILE = path.join(DATA_DIR, 'coupons.json');
 const NEWSLETTERS_FILE = path.join(DATA_DIR, 'newsletters.json');
 
+const isProductionDeployment = process.env.CONTEXT === 'production' || process.env.NODE_ENV === 'production';
 const isSandbox = PAYPAL_ENVIRONMENT === 'sandbox';
 const PAYPAL_API_BASE = isSandbox
   ? 'https://api-m.sandbox.paypal.com'
   : 'https://api-m.paypal.com';
+
+function getConfigurationError({ requirePayPal = false, requireUps = false } = {}) {
+  if (!['sandbox', 'production'].includes(PAYPAL_ENVIRONMENT)) {
+    return 'PayPal environment configuration is missing or invalid.';
+  }
+
+  if (isProductionDeployment && PAYPAL_ENVIRONMENT !== 'production') {
+    return 'PayPal production configuration is missing.';
+  }
+
+  if (requirePayPal && (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET)) {
+    return 'PayPal configuration is incomplete.';
+  }
+
+  if (!['TEST', 'LIVE'].includes(UPS_SHIPPING_MODE)) {
+    return 'UPS shipping mode configuration is missing or invalid.';
+  }
+
+  if (isProductionDeployment && UPS_SHIPPING_MODE !== 'LIVE') {
+    return 'UPS production configuration is missing.';
+  }
+
+  if (requireUps && UPS_SHIPPING_MODE === 'LIVE' && (!UPS_CLIENT_ID || !UPS_CLIENT_SECRET || !UPS_ACCOUNT_NUMBER)) {
+    return 'UPS production configuration is incomplete.';
+  }
+
+  return null;
+}
 
 const PRODUCT_CATALOG = {
   1: { id: 1, name: 'Dead Air Shell', price: 168 },
@@ -49,7 +78,11 @@ app.use(cors({
     const allowedOrigins = [
       FRONTEND_URL,
       'http://localhost:3000',
-      'http://127.0.0.1:3000'
+      'http://127.0.0.1:3000',
+      'http://localhost:8888',
+      'http://127.0.0.1:8888',
+      'http://localhost:3999',
+      'http://127.0.0.1:3999'
     ].filter(Boolean);
 
     if (!origin || allowedOrigins.includes(origin)) {
@@ -421,7 +454,7 @@ async function fetchCarrierRates({ items = [], destination = {}, origin = {} } =
     isTestRate: UPS_SHIPPING_MODE === 'TEST'
   });
 
-  if (UPS_SHIPPING_MODE === 'TEST' || !UPS_CLIENT_ID || !UPS_CLIENT_SECRET || !UPS_ACCOUNT_NUMBER) {
+  if (UPS_SHIPPING_MODE === 'TEST') {
     return [{
       carrier: testRate.carrier,
       service: testRate.service,
@@ -433,13 +466,23 @@ async function fetchCarrierRates({ items = [], destination = {}, origin = {} } =
     }];
   }
 
+  if (!UPS_CLIENT_ID || !UPS_CLIENT_SECRET || !UPS_ACCOUNT_NUMBER) {
+    throw new Error('UPS production configuration is incomplete.');
+  }
+
   return [];
 }
 
 async function resolveShippingQuote({ items = [], destination = {}, origin = {} } = {}) {
   const trustedItems = Array.isArray(items) ? normalizeCartItems(items) : [];
   const rates = await fetchCarrierRates({ items: trustedItems, destination, origin });
-  const selected = selectCheapestEligibleShipment(rates) || {
+  const selected = selectCheapestEligibleShipment(rates);
+
+  if (!selected && UPS_SHIPPING_MODE === 'LIVE') {
+    throw new Error('UPS production shipping rates are unavailable.');
+  }
+
+  const resolved = selected || {
     carrier: 'UPS',
     service: 'TEST',
     cost: Number(UPS_TEST_SHIPPING_RATE.toFixed(2)),
@@ -447,13 +490,13 @@ async function resolveShippingQuote({ items = [], destination = {}, origin = {} 
   };
 
   return {
-    carrier: sanitizeText(selected.carrier, 'UPS'),
-    service: sanitizeText(selected.service, 'TEST'),
-    cost: Number(safeNumber(selected.cost, UPS_TEST_SHIPPING_RATE).toFixed(2)),
+    carrier: sanitizeText(resolved.carrier, 'UPS'),
+    service: sanitizeText(resolved.service, 'TEST'),
+    cost: Number(safeNumber(resolved.cost, UPS_TEST_SHIPPING_RATE).toFixed(2)),
     currency: 'USD',
     estimatedDays: null,
     isTestRate: UPS_SHIPPING_MODE === 'TEST' || !UPS_CLIENT_ID || !UPS_CLIENT_SECRET || !UPS_ACCOUNT_NUMBER,
-    raw: selected.raw || buildUpsShippingRate({ amount: selected.cost, service: selected.service, isTestRate: true })
+    raw: resolved.raw || buildUpsShippingRate({ amount: resolved.cost, service: resolved.service, isTestRate: true })
   };
 }
 
@@ -587,10 +630,19 @@ async function sendNewsletterToSubscribers(newsletter) {
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, environment: PAYPAL_ENVIRONMENT });
+  const configurationError = getConfigurationError({ requirePayPal: isProductionDeployment, requireUps: isProductionDeployment });
+  if (configurationError) {
+    return res.status(503).json({ ok: false, error: configurationError });
+  }
+  return res.json({ ok: true, environment: PAYPAL_ENVIRONMENT });
 });
 
 app.get('/api/paypal/config', (req, res) => {
+  const configurationError = getConfigurationError({ requirePayPal: true });
+  if (configurationError) {
+    return res.status(503).json({ ok: false, error: configurationError });
+  }
+
   res.json({
     ok: true,
     clientId: PAYPAL_CLIENT_ID,
@@ -622,6 +674,11 @@ app.post('/api/coupons/validate', (req, res) => {
 
 app.post('/api/shipping/rates', async (req, res) => {
   try {
+    const configurationError = getConfigurationError({ requireUps: true });
+    if (configurationError) {
+      return res.status(503).json({ ok: false, error: configurationError });
+    }
+
     const trustedItems = normalizeCartItems(req.body?.items || []);
     const destination = req.body?.destination || {};
     const origin = req.body?.origin || {};
@@ -681,8 +738,9 @@ app.post('/api/refunds/preview', (req, res) => {
 
 app.post('/api/paypal/create-order', async (req, res) => {
   try {
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-      return res.status(500).json({ error: 'PayPal server credentials are not configured.' });
+    const configurationError = getConfigurationError({ requirePayPal: true, requireUps: true });
+    if (configurationError) {
+      return res.status(503).json({ error: configurationError });
     }
 
     const trustedItems = normalizeCartItems(req.body.items || []);

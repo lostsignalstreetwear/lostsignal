@@ -81,6 +81,7 @@ a:focus-visible {
 #paypalContainer .paypal-buttons iframe { border-radius: 12px !important; overflow: visible !important; }
 .payment-view .pay-options { margin-top: 18px; }
 .checkout-card .checkout-disclaimer { margin-top: 14px; color: #67655e; font: 10px var(--mono); line-height: 1.6; }
+.sandbox-badge { display: none; }
 
 .coupon-section {
 	margin: 18px 0 4px;

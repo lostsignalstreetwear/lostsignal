@@ -25,6 +25,12 @@ let appliedCoupon = null;
 const $ = (id) => document.getElementById(id);
 const navPanel = $('navPanel');
 
+document.querySelectorAll('.checkout-disclaimer').forEach((element) => {
+  if (element.textContent.toLowerCase().includes('sandbox')) {
+    element.textContent = 'Secure PayPal checkout. A successful server-side capture marks the order as paid.';
+  }
+});
+
 function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
@@ -121,8 +127,8 @@ async function loadPayPalSdk() {
     throw new Error('PayPal Client ID is not configured. Check your .env file for PAYPAL_CLIENT_ID.');
   }
 
-  if (config.environment !== 'sandbox') {
-    throw new Error('This checkout is locked to PayPal Sandbox mode for testing.');
+  if (!['sandbox', 'production'].includes(String(config.environment || '').toLowerCase())) {
+    throw new Error('PayPal environment configuration is invalid.');
   }
 
   PAYPAL_SDK_PROMISE = new Promise((resolve, reject) => {
